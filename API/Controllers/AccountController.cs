@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,7 +26,7 @@ namespace API.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<UserDto>> Resgister(RegisterDto registerDto)
+        public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
         {
             if (await UserExists(registerDto.Username)) return BadRequest("Username is taken");
 
@@ -33,6 +34,8 @@ namespace API.Controllers
 
             using var hmac = new HMACSHA512();
 
+            user.Created = DateTime.Now;
+            user.LastActive = DateTime.Now;
             user.UserName = registerDto.Username.ToLower();
             user.PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password));
             user.PasswordSalt = hmac.Key;
@@ -44,7 +47,8 @@ namespace API.Controllers
             {
                 Username = user.UserName,
                 Token = _tokenService.CreateToken(user),
-                KnownAs = user.KnownAs
+                KnownAs = user.KnownAs,
+                Gender = user.Gender
             };
         }
 
@@ -55,10 +59,10 @@ namespace API.Controllers
                 .Include(p => p.Photos)
                 .SingleOrDefaultAsync(x => x.UserName == loginDto.Username);
 
-            if (user == null)
-            {
-                return Unauthorized("Invalid Username");
-            }
+            if (user == null) return Unauthorized("Invalid Username");
+
+            // user.LastActive = DateTime.Now;
+            // await _context.SaveChangesAsync();
 
             using var hmac = new HMACSHA512(user.PasswordSalt);
 
@@ -66,10 +70,7 @@ namespace API.Controllers
 
             for (int i = 0; i < computedHash.Length; i++)
             {
-                if (computedHash[i] != user.PasswordHash[i])
-                {
-                    return Unauthorized("Invalid Password");
-                }
+                if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid Password");
             }
 
             return new UserDto
@@ -77,7 +78,8 @@ namespace API.Controllers
                 Username = user.UserName,
                 Token = _tokenService.CreateToken(user),
                 PhotoUrl = user.Photos.FirstOrDefault(x => x.IsMain)?.Url,
-                KnownAs = user.KnownAs
+                KnownAs = user.KnownAs,
+                Gender = user.Gender
             };
         }
 
