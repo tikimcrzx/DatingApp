@@ -31,11 +31,19 @@ export class ErrorInterceptor implements HttpInterceptor {
                   }
                 }
                 throw modalStateErrors.flat();
+              } else if (
+                typeof error.error === 'string' ||
+                typeof error === 'object' ||
+                typeof error.error === 'object'
+              ) {
+                if (typeof error.error === 'string')
+                  this.toastr.error(error.error, error.status);
+                else if (typeof error === 'object')
+                  this.toastr.error(error.error, error.status);
+                else if (typeof error.error === 'object')
+                  this.toastr.error(error.statusText, error.status);
               } else {
-                this.toastr.error(
-                  error.statusText === 'OK' ? 'BadRequest' : error.statusText,
-                  error.status
-                );
+                this.toastr.error(error.error, error.status);
               }
               break;
             case 401:
